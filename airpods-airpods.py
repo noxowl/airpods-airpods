@@ -7,17 +7,15 @@
 #
 ###############################################
 
-__version__ = '0.1.0'
-
-import html
 import random
-import dryscrape
 import requests
 import lxml.html
 import json
 import re
 
 from urllib.parse import urlparse, parse_qs
+
+__version__ = '0.1.0'
 
 YES = True
 NO = False
@@ -61,7 +59,7 @@ def _call_sellers():
                   .format(e))
             answers[seller] = NO
         else:
-            explain = _what_you_say(resp) 
+            explain = _what_you_say(resp)
             answers[seller] = YES if explain is YES else NO
     return answers
 
@@ -80,22 +78,27 @@ def _translating_modoo(source):
     """
     url = urlparse(source.url)
     par = parse_qs(url.query)
-    resp = requests.get('https://{0}/apps/schedule/entry'.format(url.netloc),
-                headers={'referer': source.url, 'mosa-cid': par['link'][0]})
+    resp = requests.get(
+        'https://{0}/apps/schedule/entry'.format(url.netloc),
+        headers={'referer': source.url, 'mosa-cid': par['link'][0]})
     data = lxml.etree.HTML(resp.text)\
-                    .findall(".//script")[9].text
-    
+                     .findall(".//script")[9]\
+                     .text
+
     js = ''
     for line in data.split('\n'):
         if 'noticeJson =' in line:
             parse_line = re.sub(r'\s', '', line).split(',')
             js = ', '.join(parse_line[2:4])
-            js = js.encode().decode('unicode-escape').encode('utf-8').decode('utf-8')
+            js = js.encode()\
+                   .decode('unicode-escape')\
+                   .encode('utf-8')\
+                   .decode('utf-8')
     notice_json = json.loads(parse_qs(js)['noticeJson'][0])
 
     return YES if '에어팟' in notice_json['notice']['content']\
-        or not '신형맥북에어입고!!' in notice_json['notice']['content'] else NO
-    
+        or '신형맥북에어입고!!' not in notice_json['notice']['content'] else NO
+
 
 def _is_sell_it_now(answers):
     """
@@ -112,9 +115,9 @@ def _call_myself():
     """
     Add your calling methods.
     """
-    #_call_with_urls()
+    # _call_with_urls()
     print('call myself')
-    
+
 
 def _call_with_urls():
     for url in PERSONAL_URLS:
