@@ -14,7 +14,10 @@ import random
 import dryscrape
 import requests
 import lxml.html
+import json
+import re
 
+from urllib.parse import urlparse, parse_qs
 
 YES = True
 NO = False
@@ -59,10 +62,7 @@ def _call_sellers():
             answers[seller] = NO
         else:
             explain = _what_you_say(resp) 
-            if explain is not YES:
-                answers[seller] = NO
-            else:
-                answers[seller] = YES
+            answers[seller] = YES if explain is YES else NO
     return answers
 
 
@@ -78,18 +78,24 @@ def _translating_modoo(source):
     """
     Fuck javascript-generated page.
     """
-    session = dryscrape.Session()
-    session.set_attribute('auto_load_images', False)
-    session.set_attribute('plugins_enabled', True)
-    session.visit(source.url)
-    resp = session.body()
+    url = urlparse(source.url)
+    par = parse_qs(url.query)
+    resp = requests.get('https://{0}/apps/schedule/entry'.format(url.netloc),
+                headers={'referer': source.url, 'mosa-cid': par['link'][0]})
+    data = lxml.etree.HTML(resp.text)\
+                    .findall(".//script")[9].text
+    
+    js = ''
+    for line in data.split('\n'):
+        if 'noticeJson =' in line:
+            parse_line = re.sub(r'\s', '', line).split(',')
+            js = ', '.join(parse_line[2:4])
+            js = js.encode().decode('unicode-escape').encode('utf-8').decode('utf-8')
+    notice_json = json.loads(parse_qs(js)['noticeJson'][0])
 
-    data = lxml.html.fromstring(resp)\
-                    .xpath('.//div[contains(@class, "fc_content")]')
-    page = lxml.html.fromstring(lxml.html.tostring(data[0]).decode('utf-8'))
-    print(html.unescape(lxml.html.tostring(data[0]).decode('utf-8')))
-    return False
-
+    return YES if '에어팟' in notice_json['notice']['content']\
+        or not '신형맥북에어입고!!' in notice_json['notice']['content'] else NO
+    
 
 def _is_sell_it_now(answers):
     """
